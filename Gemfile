@@ -55,4 +55,4 @@ gem 'mini_magick'
 gem 'rmagick'
 gem 'faraday'
 
-gem 'openai'
+gem "ruby-openai"
