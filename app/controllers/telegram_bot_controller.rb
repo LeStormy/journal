@@ -1,3 +1,7 @@
+require 'telegram/bot'
+require 'json'
+require 'date'
+
 class TelegramBotController < ApplicationController
   before_action :set_bot_token
 
