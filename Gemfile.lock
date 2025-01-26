@@ -163,6 +163,8 @@ GEM
     nio4r (2.7.4)
     nokogiri (1.17.2-arm64-darwin)
       racc (~> 1.4)
+    nokogiri (1.17.2-x86_64-linux)
+      racc (~> 1.4)
     observer (0.1.2)
     pg (1.5.9)
     pkg-config (1.5.9)
@@ -230,7 +232,6 @@ GEM
       logger
       rack (>= 2.2.4)
       redis-client (>= 0.22.2)
-    stopwords-filter (0.7.0)
     stringio (3.1.2)
     telegram-bot-ruby (2.2.0)
       dry-struct (~> 1.6)
@@ -251,6 +252,7 @@ GEM
 
 PLATFORMS
   arm64-darwin-22
+  x86_64-linux
 
 DEPENDENCIES
   bootsnap
@@ -264,7 +266,6 @@ DEPENDENCIES
   redis
   rmagick
   sidekiq
-  stopwords-filter
   telegram-bot-ruby
   tzinfo-data
 
