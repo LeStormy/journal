@@ -67,21 +67,35 @@ class TelegramBotController < ApplicationController
     send_message("Saved your journal entry with mood: #{mood}. Use /entries to see your past entries.")
   end
 
-  # Generate mood description using OpenAI
-  def generate_mood(text)
-    prompt = "Analyze the following text and provide a one-sentence mood or sentiment description (e.g., happy, sad, reflective, etc.), starting with one relevant emoji:\n\n#{text}"
 
-    response = @openai.completions(
-      parameters: {
-        model: "text-davinci-003",
-        prompt: prompt,
+  def generate_mood(entry_content)
+    prompt = "Analyze the following text and provide a one-sentence mood or sentiment description (e.g., happy, sad, reflective, etc.), starting with one relevant emoji:\n\n#{entry_content}"
+
+    client = Faraday.new(url: 'https://api.openai.com/v1/chat/completions') do |faraday|
+      faraday.headers['Authorization'] = "Bearer #{Rails.application.credentials.dig(:openai, :api_key)}"
+      faraday.adapter Faraday.default_adapter
+    end
+
+    response = client.post do |req|
+      req.body = {
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: "You are a helpful assistant that analyzes emotions." },
+          { role: "user", content: prompt }
+        ],
         max_tokens: 50,
         temperature: 0.7
-      }
-    )
+      }.to_json
+      req.headers['Content-Type'] = 'application/json'
+    end
 
-    mood = response.dig("choices", 0, "text").strip
-    mood.empty? ? "Neutral" : mood
+    if response.status == 200
+      result = JSON.parse(response.body)
+      mood = result['choices'].first['message']['content'].strip
+      mood
+    else
+      raise "Error: Unable to fetch mood from OpenAI API - Status #{response.status}"
+    end
   end
 
   # Fetch and display last 5 journal entries

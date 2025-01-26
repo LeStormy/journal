@@ -53,5 +53,6 @@ gem 'sidekiq'            # For background processing
 gem 'redis'              # For Sidekiq
 gem 'mini_magick'
 gem 'rmagick'
+gem 'faraday'
 
 gem "ruby-openai"

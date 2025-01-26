@@ -263,6 +263,7 @@ DEPENDENCIES
   bootsnap
   debug
   dotenv-rails
+  faraday
   mini_magick
   pg (~> 1.1)
   puma (~> 5.0)
