@@ -69,7 +69,7 @@ class TelegramBotController < ApplicationController
 
 
   def generate_mood(entry_content)
-    prompt = "Analyze the following text and provide a one-sentence mood or sentiment description (e.g., happy, sad, reflective, etc.), starting with one relevant emoji:\n\n#{entry_content}"
+    prompt = "Analyze the following text and provide a one-sentence mood or sentiment description in just a few words (e.g., happy, sad, reflective, etc.), starting with one relevant emoji:\n\n#{entry_content}"
 
     client = Faraday.new(url: 'https://api.openai.com/v1/chat/completions') do |faraday|
       faraday.headers['Authorization'] = "Bearer #{Rails.application.credentials.dig(:openai, :api_key)}"
@@ -78,9 +78,9 @@ class TelegramBotController < ApplicationController
 
     response = client.post do |req|
       req.body = {
-        model: "gpt-3.5-turbo",
+        model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: "You are a helpful assistant that analyzes emotions." },
+          { role: "system", content: "You sum up journal entry into short mood indicators" },
           { role: "user", content: prompt }
         ],
         max_tokens: 50,
@@ -240,7 +240,7 @@ class TelegramBotController < ApplicationController
 
   # Format journal entries
   def format_entry(entry)
-    "📅 #{entry.created_at.strftime('%Y-%m-%d %H:%M')}\n📝 #{entry.content}\n😌 Mood: #{entry.mood}"
+    "📅 #{entry.created_at.strftime('%Y-%m-%d %H:%M')}\n📝 #{entry.content}\n🧠 Mood: #{entry.mood}"
   end
 
   # Send a text message
