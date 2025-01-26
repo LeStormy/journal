@@ -1,9 +1,11 @@
 require 'telegram/bot'
 require 'json'
 require 'date'
+require 'openai'
 
 class TelegramBotController < ApplicationController
   before_action :set_bot_token
+  before_action :initialize_openai_client
 
   def webhook
     Telegram::Bot::Client.run(@token) do |bot|
@@ -18,41 +20,71 @@ class TelegramBotController < ApplicationController
 
   private
 
-  # ✅ Handle different commands
+  # Initialize OpenAI client
+  def initialize_openai_client
+    @openai = OpenAI::Client.new(access_token: Rails.application.credentials.dig(:openai, :api_key))
+  end
+
+  # Handle different commands
   def handle_message
     case @text
     when '/start'    then send_welcome_message
     when '/add'      then prompt_for_entry
     when '/entries'  then list_recent_entries
+    when '/moods'    then list_moods  # New command for listing moods
+    when /^\/moods (\w+) (\d{4})$/ then list_moods($1.strip, $2.to_i)  # Handle custom month/year
     when /^\/recap/  then generate_recap
     when /^\/wordcloud/ then generate_word_cloud
     when /^\/search (.+)/ then search_entries($1.strip)
     else save_journal_entry
     end
   end
+  
 
-  # ✅ Set bot token
+  # Set bot token
   def set_bot_token
     @token = Rails.application.credentials.dig(:telegram_bot, :token)
   end
 
-  # ✅ Send welcome message
+  # Send welcome message
   def send_welcome_message
     send_message("Welcome to your journal bot! Type /add to add an entry.")
   end
 
-  # ✅ Prompt user to add a journal entry
+  # Prompt user to add a journal entry
   def prompt_for_entry
     send_message("Send me your journal entry.")
   end
 
-  # ✅ Save journal entry
+  # Save journal entry and generate mood description using OpenAI
   def save_journal_entry
-    JournalEntry.create(chat_id: @chat_id, content: @text)
-    send_message("Saved your journal entry! Use /entries to see your past entries.")
+    # Call OpenAI API to get mood description
+    mood = generate_mood(@text)
+
+    # Save entry with the mood description
+    JournalEntry.create(chat_id: @chat_id, content: @text, mood: mood)
+
+    send_message("Saved your journal entry with mood: #{mood}. Use /entries to see your past entries.")
   end
 
-  # ✅ Fetch and display last 5 journal entries
+  # Generate mood description using OpenAI
+  def generate_mood(text)
+    prompt = "Analyze the following text and provide a one-sentence mood or sentiment description (e.g., happy, sad, reflective, etc.), starting with one relevant emoji:\n\n#{text}"
+
+    response = @openai.completions(
+      parameters: {
+        model: "text-davinci-003",
+        prompt: prompt,
+        max_tokens: 50,
+        temperature: 0.7
+      }
+    )
+
+    mood = response.dig("choices", 0, "text").strip
+    mood.empty? ? "Neutral" : mood
+  end
+
+  # Fetch and display last 5 journal entries
   def list_recent_entries
     entries = JournalEntry.where(chat_id: @chat_id).order(created_at: :desc).limit(5)
 
@@ -65,7 +97,35 @@ class TelegramBotController < ApplicationController
     send_message(response)
   end
 
-  # ✅ Search journal entries for a keyword
+  def list_moods(month_name = nil, year = nil)
+    if month_name && year
+      month, year = parse_month_year(month_name, year)
+      if month.nil?
+        send_message("❌ Invalid month! Example: /moods January 2024")
+        return
+      end
+  
+      start_date = Date.new(year, month, 1)
+      end_date = start_date.end_of_month
+    else
+      start_date = Date.new(Time.zone.today.year, Time.zone.today.month, 1)
+      end_date = start_date.end_of_month
+    end
+  
+    moods = JournalEntry.where(chat_id: @chat_id, created_at: start_date..end_date).pluck(:mood)
+  
+    response = if moods.any?
+      # Generate a response showing all moods for the period
+      "🧠 Your moods for #{start_date.strftime('%B %Y')}:\n\n" +
+      moods.join("\n")
+    else
+      "📭 No moods found for #{start_date.strftime('%B %Y')}. Use /add to create an entry with mood."
+    end
+  
+    send_message(response)
+  end
+
+  # Search journal entries for a keyword
   def search_entries(keyword)
     results = JournalEntry.where("chat_id = ? AND content ILIKE ?", @chat_id.to_s, "%#{keyword}%").limit(5)
 
@@ -78,7 +138,7 @@ class TelegramBotController < ApplicationController
     send_message(response)
   end
 
-  # ✅ Generate a recap of entries for a given month & year
+  # Generate a recap of entries for a given month & year
   def generate_recap
     # Check if month and year are provided, otherwise use the current month and year
     if @text.match(/^\/recap (\w+) (\d{4})$/)
@@ -111,7 +171,7 @@ class TelegramBotController < ApplicationController
     send_message(response)
   end
 
-  # ✅ Generate a text-based word cloud (most common words) with stopwords filtering
+  # Generate a text-based word cloud (most common words) with stopwords filtering
   def generate_word_cloud
     # Check if month and year are provided, otherwise use the current month and year
     if @text.match(/^\/wordcloud (\w+) (\d{4})$/)
@@ -157,24 +217,24 @@ class TelegramBotController < ApplicationController
     end
   end
 
-  # ✅ Parse user input for month & year (default: current month)
+  # Parse user input for month & year (default: current month)
   def parse_month_year(month_name, year)
     month = Date::MONTHNAMES.index(month_name.capitalize)
     year ||= Time.zone.today.year
     month ? [month, year] : [nil, year]
   end
 
-  # ✅ Format journal entries
+  # Format journal entries
   def format_entry(entry)
-    "📅 #{entry.created_at.strftime('%Y-%m-%d %H:%M')}\n📝 #{entry.content}"
+    "📅 #{entry.created_at.strftime('%Y-%m-%d %H:%M')}\n📝 #{entry.content}\n😌 Mood: #{entry.mood}"
   end
 
-  # ✅ Send a text message
+  # Send a text message
   def send_message(text)
     @bot.api.send_message(chat_id: @chat_id, text: text)
   end
 
-  # ✅ List of common stopwords
+  # List of common stopwords
   def stopwords
     [
       "i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves",

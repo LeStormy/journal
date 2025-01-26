@@ -54,3 +54,5 @@ gem 'redis'              # For Sidekiq
 gem 'mini_magick'
 gem 'rmagick'
 gem 'faraday'
+
+gem 'openai'
