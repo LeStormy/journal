@@ -131,7 +131,7 @@ class TelegramBotController < ApplicationController
     response = if moods.any?
       # Generate a response showing all moods for the period (formatted as Date : Mood)
       "🧠 Your moods for #{start_date.strftime('%B %Y')}:\n\n" +
-      moods.map { |mood| "#{mood.created_at.strftime('%Y-%m-%d')} : #{mood.content}" }.join("\n")
+      moods.map { |mood| "#{mood.created_at.strftime('%Y-%m-%d')} : #{mood.mood}" }.join("\n")
     else
       "📭 No moods found for #{start_date.strftime('%B %Y')}. Use /add to create an entry with mood."
     end
