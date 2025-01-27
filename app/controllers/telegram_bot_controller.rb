@@ -129,9 +129,9 @@ class TelegramBotController < ApplicationController
     moods = JournalEntry.where(chat_id: @chat_id, created_at: start_date..end_date).pluck(:mood)
   
     response = if moods.any?
-      # Generate a response showing all moods for the period
+      # Generate a response showing all moods for the period (formatted as Date : Mood)
       "🧠 Your moods for #{start_date.strftime('%B %Y')}:\n\n" +
-      moods.join("\n")
+      moods.map { |mood| "#{start_date.strftime('%Y-%m-%d')} : #{mood}" }.join("\n")
     else
       "📭 No moods found for #{start_date.strftime('%B %Y')}. Use /add to create an entry with mood."
     end
