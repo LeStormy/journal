@@ -126,12 +126,12 @@ class TelegramBotController < ApplicationController
       end_date = start_date.end_of_month
     end
   
-    moods = JournalEntry.where(chat_id: @chat_id, created_at: start_date..end_date).pluck(:mood)
+    moods = JournalEntry.where(chat_id: @chat_id, created_at: start_date..end_date)
   
     response = if moods.any?
       # Generate a response showing all moods for the period (formatted as Date : Mood)
       "🧠 Your moods for #{start_date.strftime('%B %Y')}:\n\n" +
-      moods.map { |mood| "#{mood.created_at.strftime('%Y-%m-%d')} : #{mood}" }.join("\n")
+      moods.map { |mood| "#{mood.created_at.strftime('%Y-%m-%d')} : #{mood.content}" }.join("\n")
     else
       "📭 No moods found for #{start_date.strftime('%B %Y')}. Use /add to create an entry with mood."
     end
