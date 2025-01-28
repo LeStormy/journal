@@ -25,6 +25,7 @@ module Journal
     config.api_only = true
     config.active_job.queue_adapter = :sidekiq
     config.session_store :cookie_store, key: '_journal_session'
+    config.hosts << "4224-2a02-8429-128-f301-68cd-5a4a-9043-7b07.ngrok-free.app"
 
   end
 end
