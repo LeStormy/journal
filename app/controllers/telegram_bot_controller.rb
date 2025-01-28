@@ -181,34 +181,35 @@ class TelegramBotController < ApplicationController
 
   # Generate a recap of entries for a given month & year
   def generate_recap
-    # Check if month and year are provided, otherwise use the current month and year
-    if @text.match(/^\/recap (\w+) (\d{4})$/)
-      month_name = $1
-      year = $2.to_i
-      month, year = parse_month_year(month_name, year)
-    else
-      month = Time.zone.today.month
-      year = Time.zone.today.year
-    end
+    # # Check if month and year are provided, otherwise use the current month and year
+    # if @text.match(/^\/recap (\w+) (\d{4})$/)
+    #   month_name = $1
+    #   year = $2.to_i
+    #   month, year = parse_month_year(month_name, year)
+    # else
+    #   month = Time.zone.today.month
+    #   year = Time.zone.today.year
+    # end
 
-    if month.nil?
-      send_message("❌ Invalid month! Example: /recap January 2024")
-      return
-    end
+    # if month.nil?
+    #   send_message("❌ Invalid month! Example: /recap January 2024")
+    #   return
+    # end
 
-    # Convert month number into a Date object at the beginning of the month
-    start_date = Date.new(year, month, 1)
-    end_date = start_date.end_of_month
+    # # Convert month number into a Date object at the beginning of the month
+    # start_date = Date.new(year, month, 1)
+    # end_date = start_date.end_of_month
 
-    # Fetch journal entries for the selected month and year
-    entries = JournalEntry.where(chat_id: @chat_id, created_at: start_date..end_date)
+    # # Fetch journal entries for the selected month and year
+    # entries = JournalEntry.where(chat_id: @chat_id, created_at: start_date..end_date)
 
-    response = if entries.any?
-      entries.map { |e| format_entry(e) }.join("\n\n")
-    else
-      "📭 No journal entries found for #{start_date.strftime('%B %Y')}."
-    end
+    # response = if entries.any?
+    #   entries.map { |e| format_entry(e) }.join("\n\n")
+    # else
+    #   "📭 No journal entries found for #{start_date.strftime('%B %Y')}."
+    # end
 
+    response = "Feature not available yet, just scroll up dummy"
     send_message(response)
   end
 
