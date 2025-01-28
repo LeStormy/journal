@@ -124,14 +124,15 @@ class TelegramBotController < ApplicationController
 
   # Fetch and display last 5 journal entries
   def list_recent_entries
-    entries = JournalEntry.where(chat_id: @chat_id).order(created_at: :desc).limit(5)
+    # entries = JournalEntry.where(chat_id: @chat_id).order(created_at: :desc).limit(5)
 
-    response = if entries.any?
-      entries.map { |e| format_entry(e) }.join("\n\n")
-    else
-      "No journal entries found! Use /add to create one."
-    end
+    # response = if entries.any?
+    #   entries.map { |e| format_entry(e) }.join("\n\n")
+    # else
+    #   "No journal entries found! Use /add to create one."
+    # end
 
+    response = "Feature not available yet, just scroll up dummy"
     send_message(response)
   end
 
@@ -167,8 +168,10 @@ class TelegramBotController < ApplicationController
   def search_entries(keyword)
     results = JournalEntry.where("chat_id = ? AND content ILIKE ?", @chat_id.to_s, "%#{keyword}%").limit(5)
 
+    # return list of dates where keyword was found
     response = if results.any?
-      results.map { |e| format_entry(e) }.join("\n\n")
+      "🔍 Result for '#{keyword}' found at the following dates:\n\n" +
+      results.map { |e| "#{e.created_at.strftime('%Y-%m-%d')}" }.join("\n")
     else
       "No entries found with '#{keyword}'. Try another keyword!"
     end
