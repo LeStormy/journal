@@ -22,10 +22,6 @@ module Journal
     # Only loads a smaller set of middleware suitable for API only apps.
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
-    config.api_only = true
     config.active_job.queue_adapter = :sidekiq
-    config.session_store :cookie_store, key: '_journal_session'
-    config.hosts << "4224-2a02-8429-128-f301-68cd-5a4a-9043-7b07.ngrok-free.app"
-
   end
 end
