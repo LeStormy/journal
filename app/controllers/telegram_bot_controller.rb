@@ -29,14 +29,20 @@ class TelegramBotController < ApplicationController
   def handle_message
     case @text
     when '/start'    then send_welcome_message
-    when '/add'      then prompt_for_entry
+    when '/add'      then start_journal_entry
+    when '/done'     then finalize_journal_entry
     when '/entries'  then list_recent_entries
-    when '/moods'    then list_moods  # New command for listing moods
-    when /^\/moods (\w+) (\d{4})$/ then list_moods($1.strip, $2.to_i)  # Handle custom month/year
+    when '/moods'    then list_moods
+    when /^\/moods (\w+) (\d{4})$/ then list_moods($1.strip, $2.to_i)
     when /^\/recap/  then generate_recap
     when /^\/wordcloud/ then generate_word_cloud
     when /^\/search (.+)/ then search_entries($1.strip)
-    else save_journal_entry
+    else
+      if session[:ongoing_entry]
+        append_to_journal_entry(@text)
+      else
+        send_message("I didn't understand that. Use /add to start a new entry.")
+      end
     end
   end
   
@@ -51,22 +57,40 @@ class TelegramBotController < ApplicationController
     send_message("Welcome to your journal bot! Type /add to add an entry.")
   end
 
-  # Prompt user to add a journal entry
-  def prompt_for_entry
-    send_message("Send me your journal entry.")
+  def start_journal_entry
+    session[:ongoing_entry] = ""  # Initialize empty journal entry
+    session[:last_message_time] = Time.zone.now  # Track timestamp
+    send_message("Start typing your journal entry. Send `/done` when finished.")
   end
-
-  # Save journal entry and generate mood description using OpenAI
-  def save_journal_entry
-    # Call OpenAI API to get mood description
-    mood = generate_mood(@text)
-
-    # Save entry with the mood description
-    JournalEntry.create(chat_id: @chat_id, content: @text, mood: mood)
-
-    send_message("Saved your journal entry with mood: #{mood}. Use /entries to see your past entries.")
+  
+  def append_to_journal_entry(text)
+    last_timestamp = session[:last_message_time] || Time.zone.now
+    current_time = Time.zone.now
+  
+    # If the new message is within 2 seconds, it's likely a split message → append with a space
+    append_with = (current_time - last_timestamp) <= 2 ? " " : "\n"
+  
+    session[:ongoing_entry] += append_with + text.strip  # Append with correct spacing
+    session[:last_message_time] = current_time  # Update last message time
+  
+    send_message("✔️ Added to your entry. Keep typing or send `/done` to finish.")
   end
-
+  
+  def finalize_journal_entry
+    entry_text = session.delete(:ongoing_entry)  # Retrieve & remove stored entry
+    session.delete(:last_message_time)  # Clear timestamp
+  
+    if entry_text.nil? || entry_text.strip.empty?
+      send_message("❌ No entry to save. Use /add to start a new one.")
+      return
+    end
+  
+    mood = generate_mood(entry_text)
+    JournalEntry.create(chat_id: @chat_id, content: entry_text.strip, mood: mood)
+  
+    send_message("✅ Entry saved!\n🧠 Mood: #{mood}\nUse /entries to view past entries.")
+  end
+  
 
   def generate_mood(entry_content)
     prompt = "Analyze the following text and provide a one-sentence mood or sentiment description in just a few words (e.g., happy, sad, reflective, etc.), starting with one relevant emoji:\n\n#{entry_content}"
