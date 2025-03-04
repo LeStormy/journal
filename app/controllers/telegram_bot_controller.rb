@@ -35,6 +35,7 @@ class TelegramBotController < ApplicationController
     when '/moods'    then list_moods
     when '/summaries' then list_summaries
     when '/analyze' then send_analyze_messages
+    when /^\/summaries (\w+) (\d{4})$/ then list_summaries($1.strip, $2.to_i)
     when /^\/moods (\w+) (\d{4})$/ then list_moods($1.strip, $2.to_i)
     when /^\/recap/  then generate_recap
     when /^\/wordcloud/ then generate_word_cloud
