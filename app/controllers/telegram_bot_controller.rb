@@ -371,7 +371,15 @@ class TelegramBotController < ApplicationController
 
   # Send a text message
   def send_message(text)
-    @bot.api.send_message(chat_id: @chat_id, text: text)
+    if markdown?
+      @bot.api.send_message(chat_id: @chat_id, text: text, parse_mode: 'markdown')
+    else
+      @bot.api.send_message(chat_id: @chat_id, text: text)
+    end
+  end
+
+  def markdown?(text)
+    !!text.match(/(\#{1,6}\s)|(\*\*.*?\*\*)|(__.*?__)|(\[.*?\]\(.*?\))|(\*.*?\*)|(_.*?_)/)
   end
 
   # List of common stopwords
