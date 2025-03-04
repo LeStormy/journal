@@ -33,6 +33,7 @@ class TelegramBotController < ApplicationController
     when '/done'     then finalize_journal_entry
     when '/entries'  then list_recent_entries
     when '/moods'    then list_moods
+    when '/summaries' then list_summaries
     when /^\/moods (\w+) (\d{4})$/ then list_moods($1.strip, $2.to_i)
     when /^\/recap/  then generate_recap
     when /^\/wordcloud/ then generate_word_cloud
@@ -150,6 +151,31 @@ class TelegramBotController < ApplicationController
       mood
     else
       raise "Error: Unable to fetch mood from OpenAI API - Status #{response.status}"
+    end
+  end
+
+  # Fetch and display summary of journal entries of the current month or of the year if none provided
+  def list_summaries(month_name = nil, year = nil)
+    # # Check if month and year are provided, otherwise use the current month and year
+    if month_name && year
+      month, year = parse_month_year(month_name, year)
+      if month.nil?
+        send_message("❌ Invalid month! Example: /summaries January 2024")
+        return
+      end
+
+      start_date = Date.new(year, month, 1)
+      end_date = start_date.end_of_month
+    else
+      start_date = Date.new(Time.zone.today.year, Time.zone.today.month, 1)
+      end_date = Time.zone.today.end_of_month
+    end
+
+    entries = JournalEntry.where(chat_id: @chat_id, created_at: start_date..end_date).order(:created_at)
+
+    # send each summary as a separate message
+    entries.each do |entry|
+      send_message("📅 #{entry.created_at.strftime('%B %d, %Y')}\n\n📝 #{entry.summary}\n\n🧠 Mood: #{entry.mood}")
     end
   end
 
