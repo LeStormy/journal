@@ -167,7 +167,7 @@ class TelegramBotController < ApplicationController
       start_date = Date.new(year, month, 1)
       end_date = start_date.end_of_month
     else
-      start_date = Date.new(Time.zone.today.year, Time.zone.today.month, 1)
+      start_date = Time.zone.today.beginning_of_year
       end_date = Time.zone.today.end_of_month
     end
 
@@ -176,6 +176,45 @@ class TelegramBotController < ApplicationController
     # send each summary as a separate message
     entries.each do |entry|
       send_message("📅 #{entry.created_at.strftime('%B %d, %Y')}\n\n📝 #{entry.summary}\n\n🧠 Mood: #{entry.mood}")
+      sleep 1
+    end
+  end
+
+  def send_analyze_messages
+    # sends the result of the analyze_me method to the user, the analyze_me method will return a block with a separator >-----< for each sub message
+    analyze_me.split(">-----<").each do |message|
+      send_message(message)
+      sleep 2
+    end
+  end
+
+  def analyze_me
+    prompt = "Read the following journal entries of the current year, and analyze me. You should format it in a way that can be separated into at most 4096 characters blocks and each block is separated by the string >-----<.\n\n#{JournalEntry.order(:created_at).map{|je| "#{je.created_at.strftime('%B %d, %Y')}\n#{je.content}\n\n"}.join}"
+
+    client = Faraday.new(url: 'https://api.openai.com/v1/chat/completions') do |faraday|
+      faraday.headers['Authorization'] = "Bearer #{Rails.application.credentials.dig(:openai, :api_key)}"
+      faraday.adapter Faraday.default_adapter
+    end
+
+    response = client.post do |req|
+      req.body = {
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "You analyze my journal through the year and tell me about it" },
+          { role: "user", content: prompt }
+        ],
+        max_tokens: 10000,
+        temperature: 0.7
+      }.to_json
+      req.headers['Content-Type'] = 'application/json'
+    end
+
+    if response.status == 200
+      result = JSON.parse(response.body)
+      mood = result['choices'].first['message']['content'].strip
+      mood
+    else
+      raise "Error: Unable to fetch mood from OpenAI API - Status #{response.status}"
     end
   end
 
