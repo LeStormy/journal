@@ -84,9 +84,10 @@ class TelegramBotController < ApplicationController
     end
   
     mood = generate_mood(entry.content.strip)
+    summary = generate_summary(entry.content.strip)
   
     # Mark entry as done
-    entry.update(status: "done", mood: mood)
+    entry.update(status: "done", mood: mood, summary: summary)
   
     send_message("✅ Entry saved!\n🧠 Mood: #{mood}\nUse /entries to view past entries.")
   end
@@ -108,6 +109,36 @@ class TelegramBotController < ApplicationController
           { role: "user", content: prompt }
         ],
         max_tokens: 50,
+        temperature: 0.7
+      }.to_json
+      req.headers['Content-Type'] = 'application/json'
+    end
+
+    if response.status == 200
+      result = JSON.parse(response.body)
+      mood = result['choices'].first['message']['content'].strip
+      mood
+    else
+      raise "Error: Unable to fetch mood from OpenAI API - Status #{response.status}"
+    end
+  end
+
+  def generate_summary(entry_content)
+    prompt = "Analyze the following text and provide a short summary:\n\n#{entry_content}"
+
+    client = Faraday.new(url: 'https://api.openai.com/v1/chat/completions') do |faraday|
+      faraday.headers['Authorization'] = "Bearer #{Rails.application.credentials.dig(:openai, :api_key)}"
+      faraday.adapter Faraday.default_adapter
+    end
+
+    response = client.post do |req|
+      req.body = {
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "You sum up my journal entries for future reading. Retell the summary as if you were talking to me." },
+          { role: "user", content: prompt }
+        ],
+        max_tokens: 800,
         temperature: 0.7
       }.to_json
       req.headers['Content-Type'] = 'application/json'
