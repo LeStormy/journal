@@ -371,7 +371,7 @@ class TelegramBotController < ApplicationController
 
   # Send a text message
   def send_message(text)
-    if markdown?
+    if markdown?(text)
       @bot.api.send_message(chat_id: @chat_id, text: text, parse_mode: 'markdown')
     else
       @bot.api.send_message(chat_id: @chat_id, text: text)
