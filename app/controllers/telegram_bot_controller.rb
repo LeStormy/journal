@@ -35,6 +35,7 @@ class TelegramBotController < ApplicationController
     when '/moods'    then list_moods
     when '/summaries' then list_summaries
     when '/analyze' then send_analyze_messages
+    when /^\/analyze (.+)/ then analyze_with_question($1.strip)
     when /^\/summaries (\w+) (\d{4})$/ then list_summaries($1.strip, $2.to_i)
     when /^\/moods (\w+) (\d{4})$/ then list_moods($1.strip, $2.to_i)
     when /^\/recap/  then generate_recap
@@ -190,6 +191,14 @@ class TelegramBotController < ApplicationController
     end
   end
 
+  def analyze_with_question(question)
+    # sends the result of the analyze_me method to the user, the analyze_me method will return a block with a separator >-----< for each sub message
+    analyze_me_with_question(question).split(">-----<").each do |message|
+      send_message(message)
+      sleep 2
+    end
+  end
+
   def analyze_me
     prompt = "Read the following journal entries of the current year, and analyze me. You should format it in a way that can be separated into at most 4096 characters blocks and each block is separated by the string >-----<.\n\n#{JournalEntry.order(:created_at).map{|je| "#{je.created_at.strftime('%B %d, %Y')}\n#{je.content}\n\n"}.join}"
 
@@ -203,6 +212,36 @@ class TelegramBotController < ApplicationController
         model: "gpt-4o-mini",
         messages: [
           { role: "system", content: "You analyze my journal through the year and tell me about it" },
+          { role: "user", content: prompt }
+        ],
+        max_tokens: 10000,
+        temperature: 0.7
+      }.to_json
+      req.headers['Content-Type'] = 'application/json'
+    end
+
+    if response.status == 200
+      result = JSON.parse(response.body)
+      mood = result['choices'].first['message']['content'].strip
+      mood
+    else
+      raise "Error: Unable to fetch mood from OpenAI API - Status #{response.status}"
+    end
+  end
+
+  def analyze_me_with_question(question)
+    prompt = "Read the following journal entries of the current year, and answer the following question : #{question}. You should format it in a way that can be separated into at most 4096 characters blocks and each block is separated by the string >-----<. Here are the journal entries : \n\n#{JournalEntry.order(:created_at).map{|je| "#{je.created_at.strftime('%B %d, %Y')}\n#{je.content}\n\n"}.join}"
+
+    client = Faraday.new(url: 'https://api.openai.com/v1/chat/completions') do |faraday|
+      faraday.headers['Authorization'] = "Bearer #{Rails.application.credentials.dig(:openai, :api_key)}"
+      faraday.adapter Faraday.default_adapter
+    end
+
+    response = client.post do |req|
+      req.body = {
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "You analyze my journal through the year and answer me questions about it" },
           { role: "user", content: prompt }
         ],
         max_tokens: 10000,
