@@ -288,7 +288,7 @@ class TelegramBotController < ApplicationController
       end_date = start_date.end_of_month
     end
   
-    moods = JournalEntry.where(chat_id: @chat_id, created_at: start_date..end_date)
+    moods = JournalEntry.where(chat_id: @chat_id, created_at: start_date..end_date).order(:created_at)
   
     response = if moods.any?
       # Generate a response showing all moods for the period (formatted as Date : Mood)
