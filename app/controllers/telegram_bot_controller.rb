@@ -382,10 +382,10 @@ class TelegramBotController < ApplicationController
       word_freq = words.each_with_object(Hash.new(0)) { |word, counts| counts[word.downcase] += 1 }
 
       # Sort by frequency and get top 10 words
-      sorted_words = word_freq.sort_by { |word, count| -count }.first(10)
+      sorted_words = word_freq.sort_by { |word, count| -count }.first(20)
 
       # Format the response as a text-based word cloud
-      response = "Top 10 most common words for #{start_date.strftime('%B %Y')}:\n\n"
+      response = "Top 20 most common words for #{start_date.strftime('%B %Y')}:\n\n"
       sorted_words.each do |word, count|
         response += "#{word.capitalize}: #{count}\n"
       end
